@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PAM Update">
+<meta name="theme-color" content="#ffffff">
+<title>PAM Update</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:#17212f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;font-weight:700}
+.app{max-width:820px;margin:auto;padding:24px 20px 40px}
+h1{font-size:48px;margin:16px 6px 8px;font-weight:900}
+.sub{margin:0 6px 24px;color:#6b7785;font-size:18px}
+.card{border:2px solid #d8e0e8;background:#fff}
+.row{min-height:108px;border-bottom:2px solid #e2e7ec;display:grid;grid-template-columns:minmax(165px,1fr) 78px 68px minmax(210px,1.35fr);gap:10px;align-items:center;padding:13px 18px}
+.name{font-size:23px;font-weight:900}
+.state{height:66px;border:0;border-radius:17px;font-size:19px;font-weight:900;touch-action:manipulation}
+.done{background:#e4f5e9;color:#118a3c}
+.done.active{background:#118a3c;color:#fff}
+.exclude{background:#f2f3f5;color:#68727d;font-size:29px}
+.exclude.active{background:#d92d20;color:#fff}
+.info{width:100%;height:66px;border:2px solid #d5dde6;border-radius:15px;padding:0 14px;font:700 18px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#17212f}
+.info::placeholder{color:#9aa4ae}
+.publish{width:calc(100% - 36px);margin:22px 18px 14px;height:84px;border:0;border-radius:19px;background:#267bd1;color:#fff;font-size:26px;font-weight:900}
+.reset{width:calc(100% - 36px);margin:0 18px 22px;height:62px;border:0;border-radius:17px;background:#fde7e7;color:#b42318;font-size:20px;font-weight:800}
+@media(max-width:600px){
+ .app{padding:16px 0 28px}
+ h1{font-size:40px;margin:16px 20px 6px}
+ .sub{margin:0 20px 20px;font-size:15px}
+ .row{min-height:94px;grid-template-columns:minmax(105px,1fr) 65px 52px minmax(115px,1.2fr);gap:7px;padding:10px 9px}
+ .name{font-size:16px}
+ .state{height:60px;border-radius:14px;font-size:14px}
+ .exclude{font-size:25px}
+ .info{height:60px;border-radius:13px;font-size:15px;padding:0 9px}
+ .publish{font-size:22px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>PAM Update</h1>
+<p class="sub">Promotional Activity Memo</p>
+<div class="card" id="sheet"></div>
+</div>
+<script>
+const areas=[
+"LO Ambient","LO Chiller","LO Freezer","LO MPF","Lidl plus end cap",
+"Non Food","Bakery SG & DOTM","Wine tour","Wine of the week","Posters",
+"Blue recall","Green recall","White recall"
+];
+let state=JSON.parse(localStorage.getItem("pamUpdateStateV2")||"null") ||
+  areas.map(()=>({status:"",text:""}));
+const sheet=document.getElementById("sheet");
+
+function save(){localStorage.setItem("pamUpdateStateV2",JSON.stringify(state))}
+function esc(v){return String(v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function setStatus(i,status){
+  state[i].status = state[i].status===status ? "" : status;
+  save(); render();
+}
+function setText(i,v){state[i].text=v;save()}
+function render(){
+ sheet.innerHTML=areas.map((a,i)=>`<div class="row">
+   <div class="name">${a}</div>
+   <button class="state done ${state[i].status==="done"?"active":""}" onclick="setStatus(${i},'done')">DONE</button>
+   <button class="state exclude ${state[i].status==="exclude"?"active":""}" onclick="setStatus(${i},'exclude')">×</button>
+   <input class="info" value="${esc(state[i].text)}" placeholder="Further info" oninput="setText(${i},this.value)">
+ </div>`).join("")+
+ `<button class="publish" onclick="publishUpdate()">Publish PAM Update</button>
+  <button class="reset" onclick="resetAll()">Reset Form</button>`;
+}
+function lineFor(i){
+ if(state[i].status==="exclude") return null;
+ const t=state[i].text.trim();
+ if(t) return `${areas[i]}: ${t}`;
+ if(state[i].status==="done") return `${areas[i]}: ✅ Done`;
+ return null;
+}
+async function publishUpdate(){
+ const report=areas.map((_,i)=>lineFor(i)).filter(Boolean);
+ const text=["PAM update","",...report].join("\n\n");
+ try{
+  if(navigator.share) await navigator.share({title:"PAM Update",text});
+  else {await navigator.clipboard.writeText(text); alert("PAM Update copied.");}
+ }catch(e){}
+}
+function resetAll(){
+ if(confirm("Reset the PAM Update form?")){
+  state=areas.map(()=>({status:"",text:""})); save(); render();
+ }
+}
+render();
+</script>
+</body>
+</html>
